@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-Hant-TW" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>二十四節氣 — rswaver</title>
+<meta name="description" content="互動式二十四節氣：選擇年份與月份，看每個節氣的交節時刻、晝夜長短、三候與詩詞；一年的晝夜消長，自成太極。">
+<link rel="canonical" href="https://solarterms.rswaver.com">
+<meta property="og:title" content="二十四節氣 — rswaver">
+<meta property="og:description" content="選擇年份與月份，看節氣交節時刻、晝夜長短、三候與詩詞；一年的晝夜消長，自成太極。">
+<meta property="og:url" content="https://solarterms.rswaver.com">
+<meta property="og:type" content="website">
+<script>
+  (function () {
+    var t = null
+    try { t = localStorage.getItem('theme') } catch (e) {}
+    var preferred = t || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+    document.documentElement.setAttribute('data-theme', preferred)
+  })()
+</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%2215%22 fill=%22%23141210%22/%3E%3Cpath d=%22M16 1a15 15 0 0 1 0 30a7.5 7.5 0 0 1 0-15a7.5 7.5 0 0 0 0-15z%22 fill=%22%23efe6d2%22/%3E%3C/svg%3E">
+<link rel="preload" href="/fonts/masa-brush.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/wenkai-body.woff2" as="font" type="font/woff2" crossorigin>
+</head>
+<body>
+<div class="app">
+  <main class="stage" aria-live="polite">
+    <svg id="card" viewBox="0 0 1080 1920" role="img" aria-labelledby="card-title">
+      <title id="card-title">二十四節氣</title>
+    </svg>
+  </main>
+  <aside class="panel">
+    <header class="panel-head">
+      <h1><span class="brush">二十四節氣</span></h1>
+      <div class="head-actions">
+        <button id="lang" class="chip" aria-label="Language">EN</button>
+        <button id="theme" class="chip icon" aria-label="Toggle theme">
+          <svg class="icon-light" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
+          <svg class="icon-dark" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <section class="controls">
+      <label class="field"><span data-i18n="year">年</span>
+        <input id="year" type="number" inputmode="numeric">
+      </label>
+      <label class="field"><span data-i18n="month">月</span>
+        <select id="month"></select>
+      </label>
+      <div class="btn-row">
+        <button id="prev" class="btn" aria-label="Previous term">‹</button>
+        <button id="today" class="btn primary" data-i18n="today">今天</button>
+        <button id="play" class="btn" data-i18n="play">播放</button>
+        <button id="next" class="btn" aria-label="Next term">›</button>
+      </div>
+    </section>
+
+    <section class="info" id="info"></section>
+
+    <section class="loc">
+      <span id="loc-text"></span>
+      <button id="locate" class="link" data-i18n="locate">使用我的位置</button>
+    </section>
+
+    <footer class="panel-foot">
+      <a href="https://rswaver.com">rswaver</a>
+      <span data-i18n="foot">節氣時刻以 UTC+8 計；1929–2100 與香港天文台逐日一致</span>
+    </footer>
+  </aside>
+</div>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>

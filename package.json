@@ -1,0 +1,21 @@
+{
+  "name": "solarterms",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "e2e": "node scripts/e2e.mjs http://localhost:5199/ e2e-out",
+    "fonts": "uvx --from fonttools --with brotli python scripts/subset-fonts.py"
+  },
+  "devDependencies": {
+    "astronomia": "^4.2.0",
+    "playwright": "^1.63.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  }
+}

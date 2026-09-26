@@ -1,0 +1,30 @@
+<!doctype html><meta charset="utf-8"><style>body{margin:0;background:#f3eee2;font:14px sans-serif;color:#222}
+.grid{display:grid;grid-template-columns:repeat(4,260px);gap:14px;padding:14px}figure{margin:0;text-align:center}canvas{width:240px;height:240px}</style>
+<div class="grid" id="g"></div>
+<script>
+const r=Math.PI/180
+const decl=l=>Math.asin(Math.sin(23.44*r)*Math.sin(l*r))/r
+function D(lat,l){const d=decl(l);const c=(Math.sin(-0.833*r)-Math.sin(lat*r)*Math.sin(d*r))/(Math.cos(lat*r)*Math.cos(d*r));return c<=-1?24:c>=1?0:2*Math.acos(c)/r/15}
+// mode: 'norm' 正規化 S / 'raw' 原始比例 S / 'wedge' 24 格白=晝 / 'std' 標準太極
+function draw(mode,lat,title){
+  const S=480,R=220,cv=document.createElement('canvas');cv.width=cv.height=S;const x=cv.getContext('2d'),img=x.createImageData(S,S)
+  let mn=24,mx=0;for(let l=0;l<360;l++){const v=D(lat,l);mn=Math.min(mn,v);mx=Math.max(mx,v)}
+  for(let py=0;py<S;py++)for(let px=0;px<S;px++){
+    const dx=px-S/2,dy=py-S/2,rr=Math.hypot(dx,dy)/R;if(rr>1)continue
+    let l=Math.atan2(-dy,-dx)/r;if(l<0)l+=360 // 春分左、夏至上、秋分右、冬至下
+    let white
+    if(mode==='std'){const X=dx/R,Y=-dy/R;white=(X<0||Math.hypot(X,Y-.5)<.5)&&!(Math.hypot(X,Y+.5)<.5&&X<0)}
+    else{
+      const lw=mode==='wedge'?Math.floor(l/15)*15+7.5:l
+      let f=D(lat,lw)/24
+      if(mode==='norm')f=mx>mn?(D(lat,lw)-mn)/(mx-mn):.5
+      const spring=(l>=270||l<=90)
+      white=mode==='wedge'?rr<f:(spring?rr<f:rr>1-f)
+    }
+    const i=(py*S+px)*4,c=white?245:25;img.data[i]=img.data[i+1]=img.data[i+2]=c;img.data[i+3]=255}
+  x.putImageData(img,0,0);x.strokeStyle='#888';x.lineWidth=2;x.beginPath();x.arc(S/2,S/2,R,0,7);x.stroke()
+  x.fillStyle='#c33';x.font='22px sans-serif';x.textAlign='center';x.fillText('夏至',S/2,22);x.fillText('冬至',S/2,S-6);x.fillText('春',14,S/2);x.fillText('秋',S-14,S/2)
+  const f=document.createElement('figure');f.append(cv);f.insertAdjacentHTML('beforeend',`<figcaption>${title}<br>晝長 ${mn.toFixed(1)}–${mx.toFixed(1)}h</figcaption>`);g.append(f)}
+for(const lat of [25,34.4,66.6])for(const m of ['wedge','raw','norm'])draw(m,lat,`${lat}° · ${{wedge:'A 每格白=晝',raw:'B 原始比例 S',norm:'C 正規化 S'}[m]}`)
+draw('std',0,'D 標準太極（參考）')
+</script>
