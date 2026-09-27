@@ -49,6 +49,10 @@ export class CardView {
   get ink() { return this.pal.ink }
   get contentLayer() { return this.layers.content }
   private abs = 0
+  /** 「今天」模式：指針停在今天的位置（兩節氣之間），目前節氣仍高亮 */
+  today: { label: string } | null = null
+  /** 刻度尺目前位置（絕對序號，可為小數） */
+  dialPos = 0
   private sceneDefs!: SVGDefsElement
 
   constructor(svg: SVGSVGElement) {
@@ -255,6 +259,7 @@ export class CardView {
     const { cx, cy, r, step } = DIAL
     const pal = this.pal
     const polar = (deg: number, rad: number) => [cx + Math.sin((deg * Math.PI) / 180) * rad, cy - Math.cos((deg * Math.PI) / 180) * rad]
+    this.dialPos = p
     this.dialArc.replaceChildren()
     this.dialLabels.replaceChildren()
     const base = Math.round(p)
@@ -262,24 +267,27 @@ export class CardView {
       if (n < ABS_MIN || n > ABS_MAX) continue
       const { i } = split(n)
       const a = (n - p) * step
-      // 季節色外弧
-      const [ax, ay] = polar(a - step / 2, r)
-      const [bx, by] = polar(a + step / 2, r)
+      // 季節色外弧：由本節氣交節（名稱正下方）延伸到下一個節氣
+      const [ax, ay] = polar(a, r)
+      const [bx, by] = polar(a + step, r)
       this.dialArc.append(el('path', { d: `M${ax} ${ay} A${r} ${r} 0 0 1 ${bx} ${by}`, fill: 'none', stroke: SEASON_COLOR[TERMS[i].season], 'stroke-width': 9 }))
-      // 刻度
+      // 刻度：主刻度 = 交節時刻，之後每小格約 3 天
       for (let k = 0; k < 5; k++) {
-        const ta = a - step / 2 + (k * step) / 5
+        const ta = a + (k * step) / 5
         const [t1x, t1y] = polar(ta, r - 8)
         const [t2x, t2y] = polar(ta, r - (k === 0 ? 34 : 18))
         this.dialArc.append(el('line', { x1: t1x, y1: t1y, x2: t2x, y2: t2y, stroke: pal.faint, 'stroke-width': k === 0 ? 2 : 1 }))
       }
       // 名稱
       const [lx, ly] = polar(a, r - 78)
-      const active = n === this.abs && Math.abs(n - p) < 0.5
+      const active = n === this.abs && (this.today !== null || Math.abs(n - p) < 0.5)
       const lab = el('g', { transform: `rotate(${a} ${lx} ${ly})` })
       if (active) lab.append(el('rect', { x: lx - 50, y: ly - 26, width: 100, height: 52, rx: 10, fill: mix(pal.paper, pal.accent, 0.14), stroke: pal.accent, 'stroke-width': 1.5 }))
       lab.append(el('text', { x: lx, y: ly, fill: active ? pal.accent : pal.ink, 'font-weight': active ? 700 : 400 }, TERMS[i].name))
       this.dialLabels.append(lab)
+    }
+    if (this.today) {
+      this.dialLabels.append(el('text', { x: cx, y: cy - r - 58, fill: pal.accent, 'font-size': 26, 'font-weight': 700, class: 'dial-today' }, this.today.label))
     }
   }
 

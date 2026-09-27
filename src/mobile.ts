@@ -1,6 +1,6 @@
 // 手機直向：底部工具列、年月選單、「⋯」選單（把桌機右側面板的內容搬進來）
 import { YEAR_MAX, YEAR_MIN, termLocal } from './astro'
-import { currentAbs, split } from './calendar'
+import { split } from './calendar'
 import { TERMS } from './data/terms'
 import { t, type Lang } from './i18n'
 import { Sheet } from './sheet'
@@ -10,6 +10,7 @@ export const MOBILE_MQ = '(max-width: 820px) and (orientation: portrait)'
 export interface MobileApi {
   state: { abs: number; lang: Lang; playing: number; view: 'cards' | 'taiji' }
   go: (abs: number) => void
+  goToday: () => void
   setView: (v: 'cards' | 'taiji') => void
   togglePlay: () => void
 }
@@ -42,7 +43,7 @@ export function initMobile(api: MobileApi) {
   place()
 
   // ── 工具列 ──
-  $('m-today').onclick = () => api.go(currentAbs(new Date()))
+  $('m-today').onclick = () => api.goToday()
   $('m-date').onclick = () => openDate()
   $('m-play').onclick = () => api.togglePlay()
   $('m-view').onclick = () => api.setView(api.state.view === 'cards' ? 'taiji' : 'cards')
@@ -55,7 +56,7 @@ export function initMobile(api: MobileApi) {
   const setYear = (y: number) => { sheetYear = Math.min(YEAR_MAX, Math.max(YEAR_MIN, Math.round(y) || sheetYear)); renderGrid() }
   for (const [id, dy] of [['ds-m10', -10], ['ds-m1', -1], ['ds-p1', 1], ['ds-p10', 10]] as const) $(id).onclick = () => setYear(sheetYear + dy)
   yearIn.onchange = () => setYear(Number(yearIn.value))
-  $('ds-today').onclick = () => { api.go(currentAbs(new Date())); dateSheet.close() }
+  $('ds-today').onclick = () => { api.goToday(); dateSheet.close() }
   $('ds-grid').addEventListener('click', (e) => {
     const b = (e.target as Element).closest<HTMLElement>('[data-i]')
     if (!b) return

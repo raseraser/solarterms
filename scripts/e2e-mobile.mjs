@@ -82,8 +82,9 @@ for (const [name, vp] of [['iphone', { width: 390, height: 664 }], ['android', {
   await p.keyboard.press('Escape'); await p.waitForTimeout(350)
 
   // 今天 / 太極
-  await p.tap('#m-today'); await p.waitForTimeout(700)
+  await p.tap('#m-today'); await p.waitForTimeout(900)
   check((await title(p)).startsWith('秋分 2026'), `工具列「今天」→ ${await title(p)}`)
+  check((await p.$eval('.dial-today', (e) => e.textContent).catch(() => null))?.startsWith('今天'), '工具列「今天」→ 刻度尺顯示今天標記')
   await p.tap('#m-view'); await p.waitForTimeout(3500)
   check(await visible(p, '#taiji') && !(await visible(p, '#card')), '☯ → 太極頁')
   const tj = await rect(p, '#taiji')

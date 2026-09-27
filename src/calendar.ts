@@ -56,3 +56,12 @@ export function daysToNext(abs: number, now: Date): number | null {
   const { year, i } = split(next)
   return Math.ceil((termTime(year, i).getTime() - now.getTime()) / 86400e3)
 }
+
+/** now 在節氣序列上的連續位置：currentAbs + 已過比例（例：秋分後 27% → 秋分 abs + 0.27） */
+export function todayPos(now: Date): number {
+  const abs = currentAbs(now)
+  if (abs >= ABS_MAX) return abs
+  const a = split(abs), b = split(abs + 1)
+  const t0 = termTime(a.year, a.i).getTime(), t1 = termTime(b.year, b.i).getTime()
+  return abs + (now.getTime() - t0) / (t1 - t0)
+}

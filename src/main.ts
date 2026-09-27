@@ -1,6 +1,6 @@
 import './style.css'
 import { CardView } from './card'
-import { ABS_MAX, ABS_MIN, clampAbs, currentAbs, daysToNext, hm, monthAbs, split, termInfo } from './calendar'
+import { ABS_MAX, ABS_MIN, clampAbs, currentAbs, daysToNext, hm, monthAbs, split, termInfo, todayPos } from './calendar'
 import { YEAR_MAX, YEAR_MIN } from './astro'
 import { TERMS } from './data/terms'
 import { detectLang, saveLang, t, type Lang } from './i18n'
@@ -23,6 +23,8 @@ const state = {
   playing: 0 as number, // setInterval id
   view: 'cards' as 'cards' | 'taiji',
   mode: 'norm' as TaijiMode,
+  /** 刻度尺停在今天（兩節氣之間）；任何其他導覽都會解除 */
+  dialToday: true,
 }
 
 const theme = () => (document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light')
@@ -58,7 +60,11 @@ function renderStatic() {
 
 function render(animateTaiji = false) {
   const d = t(state.lang)
+  const now = new Date()
+  if (state.dialToday && currentAbs(now) !== state.abs) state.dialToday = false
+  card.today = state.dialToday ? { label: d.todayMark(now.getMonth() + 1, now.getDate()) } : null
   const scene = card.render(state.abs, state.lat, theme(), d)
+  if (state.dialToday) card.setDialPos(todayPos(now))
   fx.set(state.view === 'cards' ? scene.particles ?? [] : [], card.ink)
   if (state.view === 'taiji') taiji.render({ lat: state.lat, mode: state.mode, active: split(state.abs).i, theme: theme(), d, animate: animateTaiji })
   latIn.value = String(state.lat)
@@ -67,7 +73,6 @@ function render(animateTaiji = false) {
   const term = TERMS[info.i]
   yearIn.value = String(info.year)
   monthSel.value = String(Math.floor(info.i / 2) + 1)
-  const now = new Date()
   const isCurrent = currentAbs(now) === state.abs
   const next = daysToNext(state.abs, now)
   const nextName = state.abs < ABS_MAX ? TERMS[split(state.abs + 1).i].name : ''
@@ -102,9 +107,28 @@ function setView(v: 'cards' | 'taiji') {
 
 function go(abs: number) {
   const target = clampAbs(abs)
-  if (target === state.abs) return card.setDialPos(target)
-  animateDial(state.abs, target)
+  const from = card.dialPos
+  leaveToday()
+  if (target === state.abs) return animateDial(from, target)
+  animateDial(from, target)
   changeTo(target)
+}
+
+function leaveToday() {
+  if (!state.dialToday) return
+  state.dialToday = false
+  card.today = null
+}
+
+/** 今天：卡片切到目前節氣，刻度尺滑到今天在兩節氣之間的位置並停住 */
+function goToday() {
+  const now = new Date()
+  const target = currentAbs(now)
+  const from = card.dialPos
+  state.dialToday = true
+  if (target !== state.abs) changeTo(target)
+  else render()
+  animateDial(from, todayPos(now))
 }
 
 /** 換節氣：墨暈轉場 → 重繪 → 濺墨 */
@@ -143,7 +167,7 @@ svg.addEventListener('pointerdown', (e) => {
   const [, y] = toCard(e)
   if (y < 1500) { swipe = { x: e.clientX, y: e.clientY }; return }
   cancelAnimationFrame(anim)
-  drag = { x: e.clientX, p0: state.abs, scale: 1080 / rect.width, moved: false }
+  drag = { x: e.clientX, p0: card.dialPos, scale: 1080 / rect.width, moved: false }
   svg.setPointerCapture(e.pointerId)
 })
 svg.addEventListener('pointercancel', () => { swipe = null; drag = null })
@@ -166,7 +190,7 @@ svg.addEventListener('click', (e) => {
 svg.addEventListener('pointermove', (e) => {
   if (!drag) return
   const dx = (e.clientX - drag.x) * drag.scale
-  if (Math.abs(dx) > 4) drag.moved = true
+  if (Math.abs(dx) > 4 && !drag.moved) { drag.moved = true; leaveToday() }
   const p = Math.min(ABS_MAX, Math.max(ABS_MIN, drag.p0 - dx / CardView.unitsPerTerm))
   card.setDialPos(p)
 })
@@ -178,6 +202,7 @@ svg.addEventListener('pointerup', (e) => {
   drag = null
   if (moved) {
     const target = clampAbs(Math.round(p))
+    leaveToday()
     animateDial(p, target)
     if (target !== state.abs) changeTo(target)
   } else {
@@ -190,7 +215,7 @@ svg.addEventListener('pointerup', (e) => {
 // ── 按鈕 / 鍵盤 ──
 $('prev').onclick = () => go(state.abs - 1)
 $('next').onclick = () => go(state.abs + 1)
-$('today').onclick = () => go(currentAbs(new Date()))
+$('today').onclick = goToday
 yearIn.onchange = () => {
   const y = Math.min(YEAR_MAX, Math.max(YEAR_MIN, Math.round(Number(yearIn.value)) || YEAR_MIN))
   go(y * 24 + split(state.abs).i)
@@ -246,7 +271,7 @@ function locate() {
 }
 $('locate').onclick = locate
 
-const mobile = initMobile({ state, go, setView, togglePlay })
+const mobile = initMobile({ state, go, goToday, setView, togglePlay })
 
 /** 第一次開啟：刻度尺左右晃一下，提示可以拖曳 / 滑動（只一次） */
 function hintOnce() {
@@ -254,10 +279,10 @@ function hintOnce() {
   try { if (localStorage.getItem(KEY)) return; localStorage.setItem(KEY, '1') } catch { return }
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
   setTimeout(() => {
-    const t0 = performance.now(), base = state.abs
+    const t0 = performance.now(), baseAbs = state.abs, base = card.dialPos
     const step = (now: number) => {
       const k = (now - t0) / 1400
-      if (k >= 1 || state.abs !== base) return card.setDialPos(state.abs)
+      if (k >= 1 || state.abs !== baseAbs) return card.setDialPos(state.dialToday ? todayPos(new Date()) : state.abs)
       card.setDialPos(base + Math.sin(k * Math.PI * 4) * 0.35 * (1 - k))
       anim = requestAnimationFrame(step)
     }
