@@ -27,4 +27,6 @@
 
 ## 指令
 - `npm test` / `npm run dev` / `npm run build`
+- 端到端：`npm run e2e`（桌機）、`npm run e2e:mobile`（手機直 / 橫、CDP 觸控）；需先 `npx vite --port 5199`
+- 手機直向（`MOBILE_MQ`）：右側面板 DOM 搬進「⋯」底部選單（`src/mobile.ts`），不複製邏輯；卡片上的點擊在 `click` 事件處理（pointerup 就開面板會被隨後的 click 點到遮罩而關閉）
 - 截圖驗證：`node scripts/shot.mjs <file|url> <out.png> [w] [h]`（用系統 Chrome）

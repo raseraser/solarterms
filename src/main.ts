@@ -8,6 +8,7 @@ import { Particles } from './particles'
 import { inkSplatter, inkTransition } from './transition'
 import { TaijiView } from './taiji'
 import type { TaijiMode } from './taiji-geom'
+import { initMobile } from './mobile'
 
 const TAIPEI = 25.03
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
@@ -52,6 +53,7 @@ function renderStatic() {
   $('explain').textContent = state.mode === 'norm' ? d.explainNorm : d.explainRaw
   $('mode-norm').classList.toggle('on', state.mode === 'norm')
   $('mode-raw').classList.toggle('on', state.mode === 'raw')
+  mobile?.update()
 }
 
 function render(animateTaiji = false) {
@@ -85,6 +87,7 @@ function render(animateTaiji = false) {
     (state.locMine ? d.locMine : state.locDenied || state.latCustom ? '' : d.locTaipei) +
     (state.locDenied ? ` · ${d.locDenied}` : '')
   $('locate').hidden = state.locMine
+  mobile?.update()
 }
 
 function setView(v: 'cards' | 'taiji') {
@@ -95,10 +98,6 @@ function setView(v: 'cards' | 'taiji') {
   $('taiji-controls').hidden = v !== 'taiji'
   renderStatic()
   render(v === 'taiji')
-  // 手機：面板在下方，切換後捲回圖面，否則使用者看不到剛打開的畫面
-  if (matchMedia('(max-width: 820px)').matches) {
-    document.querySelector('.stage')!.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
-  }
 }
 
 function go(abs: number) {
@@ -122,7 +121,7 @@ let anim = 0
 function animateDial(from: number, to: number) {
   cancelAnimationFrame(anim)
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
-  const t0 = performance.now(), dur = 420
+  const t0 = performance.now(), dur = 650
   const step = (now: number) => {
     const k = Math.min(1, (now - t0) / dur)
     const e = 1 - (1 - k) ** 3
@@ -133,13 +132,36 @@ function animateDial(from: number, to: number) {
 }
 
 let drag: { x: number; p0: number; scale: number; moved: boolean } | null = null
+// 刻度尺以外：左右滑換節氣、點大字看詳細、點日期選年月（上下滑交給瀏覽器捲動：touch-action: pan-y）
+let swipe: { x: number; y: number } | null = null
+const toCard = (e: MouseEvent) => {
+  const r = svg.getBoundingClientRect()
+  return [((e.clientX - r.left) / r.width) * 1080, ((e.clientY - r.top) / r.height) * 1920]
+}
 svg.addEventListener('pointerdown', (e) => {
   const rect = svg.getBoundingClientRect()
-  const y = ((e.clientY - rect.top) / rect.height) * 1920
-  if (y < 1500) return // 只在刻度尺區域拖曳
+  const [, y] = toCard(e)
+  if (y < 1500) { swipe = { x: e.clientX, y: e.clientY }; return }
   cancelAnimationFrame(anim)
   drag = { x: e.clientX, p0: state.abs, scale: 1080 / rect.width, moved: false }
   svg.setPointerCapture(e.pointerId)
+})
+svg.addEventListener('pointercancel', () => { swipe = null; drag = null })
+svg.addEventListener('pointerup', (e) => {
+  if (!swipe) return
+  const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y
+  swipe = null
+  tapped = Math.abs(dx) < 10 && Math.abs(dy) < 10
+  if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) go(state.abs + (dx < 0 ? 1 : -1))
+})
+// 點擊在 click 才處理：若在 pointerup 就開面板，隨後同座標的 click 會落在剛出現的遮罩上把它關掉
+let tapped = false
+svg.addEventListener('click', (e) => {
+  if (!tapped) return
+  tapped = false
+  const [x, y] = toCard(e)
+  if (x > 820 && y < 240) mobile.openDate()
+  else if (x > 420 && x < 660 && y > 420 && y < 1030) mobile.openDetail()
 })
 svg.addEventListener('pointermove', (e) => {
   if (!drag) return
@@ -179,15 +201,16 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowLeft') go(state.abs - 1)
   if (e.key === 'ArrowRight') go(state.abs + 1)
 })
-$('play').onclick = () => {
+function togglePlay() {
   if (state.playing) {
     clearInterval(state.playing)
     state.playing = 0
   } else {
-    state.playing = window.setInterval(() => (state.abs >= ABS_MAX ? $('play').click() : go(state.abs + 1)), 2500)
+    state.playing = window.setInterval(() => (state.abs >= ABS_MAX ? togglePlay() : go(state.abs + 1)), 2500)
   }
   renderStatic()
 }
+$('play').onclick = togglePlay
 $('theme').onclick = () => {
   const n = theme() === 'dark' ? 'light' : 'dark'
   document.documentElement.setAttribute('data-theme', n)
@@ -223,7 +246,27 @@ function locate() {
 }
 $('locate').onclick = locate
 
+const mobile = initMobile({ state, go, setView, togglePlay })
+
+/** 第一次開啟：刻度尺左右晃一下，提示可以拖曳 / 滑動（只一次） */
+function hintOnce() {
+  const KEY = 'solarterms-hint'
+  try { if (localStorage.getItem(KEY)) return; localStorage.setItem(KEY, '1') } catch { return }
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  setTimeout(() => {
+    const t0 = performance.now(), base = state.abs
+    const step = (now: number) => {
+      const k = (now - t0) / 1400
+      if (k >= 1 || state.abs !== base) return card.setDialPos(state.abs)
+      card.setDialPos(base + Math.sin(k * Math.PI * 4) * 0.35 * (1 - k))
+      anim = requestAnimationFrame(step)
+    }
+    anim = requestAnimationFrame(step)
+  }, 900)
+}
+
 renderStatic()
 document.fonts.ready.then(() => render())
 render()
 locate()
+hintOnce()

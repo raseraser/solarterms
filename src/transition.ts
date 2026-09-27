@@ -1,5 +1,6 @@
 // 墨暈轉場：舊卡片被一團暈開的墨吃出洞，洞內露出新卡片；新大字周圍濺墨
 import { el } from './svg'
+import { DIAL } from './card'
 
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches
 let current: { overlay: SVGSVGElement; raf: number } | null = null
@@ -45,6 +46,8 @@ export function inkTransition(card: SVGSVGElement, ink: string, duration = 950) 
       el('mask', { id: 'ink-mask', maskUnits: 'userSpaceOnUse', x: 0, y: 0, width: 1080, height: 1920 },
         el('rect', { width: 1080, height: 1920, fill: '#fff' }),
         hole,
+        // 挖掉刻度尺區：底下新卡片的刻度尺全程可見，滑動動畫才看得到
+        el('circle', { cx: DIAL.cx, cy: DIAL.cy, r: DIAL.r + 40, fill: '#000' }),
       ),
     ),
     body,

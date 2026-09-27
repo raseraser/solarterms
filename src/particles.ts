@@ -18,11 +18,15 @@ export class Particles {
   private last = 0
   private ink = '#000'
   private burstTimer = 0
+  private onScreen = true
 
   constructor(private canvas: HTMLCanvasElement, private target: Element) {
     this.ctx = canvas.getContext('2d')!
     new ResizeObserver(() => this.resize()).observe(target)
+    window.addEventListener('resize', () => this.resize())
     document.addEventListener('visibilitychange', () => (document.hidden ? this.stop() : this.start()))
+    // 卡片捲出畫面時暫停
+    new IntersectionObserver(([e]) => { this.onScreen = e.isIntersecting; this.onScreen ? this.start() : this.stop() }).observe(target)
   }
 
   private resize() {
@@ -32,18 +36,25 @@ export class Particles {
     this.canvas.height = Math.round(r.height * dpr)
     this.canvas.style.width = `${r.width}px`
     this.canvas.style.height = `${r.height}px`
+    // 卡片可能置中（手機工具列版面），畫布跟著對齊
+    const pr = this.canvas.parentElement!.getBoundingClientRect()
+    this.canvas.style.left = `${r.left - pr.left}px`
+    this.canvas.style.top = `${r.top - pr.top}px`
   }
 
   set(specs: ParticleSpec[], ink: string) {
     this.specs = specs
     this.ink = ink
     this.ps = []
-    for (const s of specs) for (let k = 0; k < s.count; k++) if (s.kind !== 'spark') this.ps.push(this.spawn(s.kind, true))
+    if (!specs.length) { this.stop(); this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height); return }
+    // 小螢幕粒子減半（手機效能）
+    const scale = window.innerWidth < 600 ? 0.5 : 1
+    for (const s of specs) for (let k = 0; k < Math.round(s.count * scale); k++) if (s.kind !== 'spark') this.ps.push(this.spawn(s.kind, true))
     this.start()
   }
 
   start() {
-    if (this.raf || !this.specs.length || matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    if (this.raf || !this.specs.length || !this.onScreen || document.hidden || matchMedia('(prefers-reduced-motion: reduce)').matches) return
     this.last = performance.now()
     const loop = (now: number) => {
       const dt = Math.min(0.05, (now - this.last) / 1000)

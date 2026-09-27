@@ -38,7 +38,7 @@ function snowCapPaths(pts: [number, number][], threshold: number, depth: number,
 }
 
 // ── 刻度尺幾何：大圓只露出頂端一段弧 ──
-const DIAL = { cx: 540, cy: 3110, r: 1420, step: 8.5 } // step = 每個節氣的角度
+export const DIAL = { cx: 540, cy: 3110, r: 1420, step: 8.5 } // step = 每個節氣的角度
 
 export class CardView {
   private svg: SVGSVGElement

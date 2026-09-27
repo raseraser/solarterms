@@ -91,6 +91,46 @@
     </footer>
   </aside>
 </div>
+<nav class="mbar" aria-label="controls">
+  <button id="m-today" class="mbar-btn">今天</button>
+  <button id="m-date" class="mbar-btn mbar-date" aria-haspopup="dialog"><span id="m-date-text"></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button>
+  <button id="m-play" class="mbar-btn icon" aria-label="播放">
+    <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+    <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>
+  </button>
+  <button id="m-view" class="mbar-btn icon" aria-label="晝夜太極">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a4.5 4.5 0 0 1 0 9a4.5 4.5 0 0 0 0 9"/><circle cx="12" cy="7.5" r="1.2" class="fill"/><circle cx="12" cy="16.5" r="1.2"/></svg>
+  </button>
+  <button id="m-more" class="mbar-btn icon" aria-label="更多" aria-haspopup="dialog">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6" class="fill"/><circle cx="12" cy="12" r="1.6" class="fill"/><circle cx="19" cy="12" r="1.6" class="fill"/></svg>
+  </button>
+</nav>
+
+<div class="sheet" id="sheet-date" role="dialog" aria-modal="true" aria-labelledby="sheet-date-title" hidden>
+  <div class="sheet-backdrop"></div>
+  <div class="sheet-panel" tabindex="-1">
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <h2 class="sheet-title" id="sheet-date-title">選擇日期</h2>
+    <div class="ds-year">
+      <button id="ds-m10" class="btn" aria-label="-10">«</button>
+      <button id="ds-m1" class="btn" aria-label="-1">‹</button>
+      <input id="ds-year" type="number" inputmode="numeric" aria-label="year">
+      <button id="ds-p1" class="btn" aria-label="+1">›</button>
+      <button id="ds-p10" class="btn" aria-label="+10">»</button>
+    </div>
+    <div class="ds-grid" id="ds-grid"></div>
+    <button id="ds-today" class="btn primary ds-today">今天</button>
+  </div>
+</div>
+
+<div class="sheet" id="sheet-more" role="dialog" aria-modal="true" aria-labelledby="sheet-more-title" hidden>
+  <div class="sheet-backdrop"></div>
+  <div class="sheet-panel" tabindex="-1">
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <h2 class="sheet-title" id="sheet-more-title">更多</h2>
+    <div class="sheet-body"></div>
+  </div>
+</div>
 <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

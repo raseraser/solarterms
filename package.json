@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "e2e": "node scripts/e2e.mjs http://localhost:5199/ e2e-out",
-    "fonts": "uvx --from fonttools --with brotli python scripts/subset-fonts.py"
+    "fonts": "uvx --from fonttools --with brotli python scripts/subset-fonts.py",
+    "e2e:mobile": "node scripts/e2e-mobile.mjs http://localhost:5199/ e2e-out/mobile"
   },
   "devDependencies": {
     "astronomia": "^4.2.0",

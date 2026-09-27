@@ -103,6 +103,32 @@ for (const theme of ['light', 'dark']) {
   await p.context().close()
 }
 
+// ── 播放：刻度尺滑動在轉場期間可見 ──
+{
+  const p = await open('light')
+  console.log('play dial')
+  await p.waitForTimeout(1200)
+  const t0 = await title(p)
+  await p.click('#play')
+  await p.waitForFunction((t) => document.querySelector('#card title').textContent !== t, t0, { timeout: 5000 })
+  // 換節氣後刻度尺標籤角度應逐格變化（動畫中），而非一次跳到定位
+  const angles = []
+  const frames = []
+  for (let k = 0; k < 5; k++) {
+    angles.push(await p.$eval('.dial g[transform] text', (e) => e.parentElement.getAttribute('transform')))
+    const box = await p.$eval('#card', (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y + r.height * 0.8, width: r.width, height: r.height * 0.2 } })
+    frames.push((await p.screenshot({ clip: box })).toString('base64'))
+    await p.waitForTimeout(110)
+  }
+  await p.click('#play')
+  check(new Set(angles).size >= 3, `播放換節氣時刻度尺連續滑動（取樣到 ${new Set(angles).size} 種角度）`)
+  const sheet = await browser.newPage({ viewport: { width: 700, height: 700 } })
+  await sheet.setContent(`<body style="margin:0;display:flex;flex-direction:column;gap:3px">${frames.map((b) => `<img style="width:100%" src="data:image/png;base64,${b}">`).join('')}</body>`)
+  await sheet.screenshot({ path: `${out}/play-dial.png`, fullPage: true })
+  await sheet.close()
+  await p.context().close()
+}
+
 // ── 墨暈轉場連續畫面 ──
 {
   const p = await open('light')
@@ -143,10 +169,7 @@ for (const theme of ['light', 'dark']) {
   const overflow = await p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)
   check(!overflow, '手機 390px 無橫向捲動')
   await p.screenshot({ path: `${out}/mobile.png`, fullPage: true })
-  await p.click('#view'); await p.waitForTimeout(900)
-  check(!(await p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)), '手機太極頁無橫向捲動')
-  check((await p.evaluate(() => document.getElementById('taiji').getBoundingClientRect().top)) > -5, '手機切到太極後捲回圖面頂端')
-  await p.screenshot({ path: `${out}/mobile-taiji.png` })
+  // 手機工具列 / 選單 / 觸控的完整檢查在 scripts/e2e-mobile.mjs
   await p.context().close()
 }
 

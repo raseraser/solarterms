@@ -178,12 +178,100 @@ body {
   #fx { display: none; }
 }
 
-/* 手機：卡片滿寬，面板在下 */
-@media (max-width: 820px) {
-  .app { flex-direction: column; padding: 0 0 24px; gap: 16px; }
-  .stage { width: 100%; }
-  #card { width: 100%; height: auto; max-height: none; border-radius: 0; box-shadow: none; }
+/* ── 手機工具列 / 彈出面板（桌機不顯示） ── */
+.mbar, .sheet { display: none; }
+.panel { max-height: calc(100dvh - 48px); overflow-y: auto; }
+
+/* 手機直向：卡片 + 底部工具列剛好一個畫面；右側面板內容搬進「⋯」選單 */
+@media (max-width: 820px) and (orientation: portrait) {
+  :root { --bar: 56px; --safe-b: env(safe-area-inset-bottom, 0px); }
+  html, body { overflow: hidden; height: 100dvh; }
+  .app { display: block; padding: 0; }
+  .panel { display: none; }
+  .stage {
+    height: calc(100dvh - var(--bar) - var(--safe-b));
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  #card, #taiji { height: 100%; width: auto; max-width: 100%; max-height: none; border-radius: 0; box-shadow: none; }
   #fx { border-radius: 0; }
-  #taiji { width: 100%; height: auto; max-height: none; border-radius: 0; box-shadow: none; }
-  .panel { width: 100%; padding: 0 16px; }
+
+  .mbar {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    height: calc(var(--bar) + var(--safe-b));
+    padding: 6px 8px calc(6px + var(--safe-b));
+    display: grid; grid-template-columns: auto 1fr 44px 44px 44px; gap: 6px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    z-index: 10;
+  }
+  .mbar-btn {
+    font: inherit; font-size: 15px; color: var(--text);
+    background: var(--btn); border: 1px solid var(--border); border-radius: 10px;
+    height: 44px; padding: 0 12px; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mbar-btn:active { background: var(--btn-hover); }
+  .mbar-btn.icon { padding: 0; }
+  .mbar-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .mbar-btn svg .fill, #m-play svg { fill: currentColor; stroke: none; }
+  .mbar-btn.on { background: var(--accent); color: #fff; border-color: transparent; }
+  [data-theme='dark'] .mbar-btn.on { color: #1a1611; }
+  #m-today { background: var(--accent); color: #fff; border-color: transparent; }
+  [data-theme='dark'] #m-today { color: #1a1611; }
+  .mbar-date { font-size: 16px; font-weight: 600; }
+  .mbar-date svg { width: 18px; height: 18px; }
+  #m-play .i-pause, #m-play.on .i-play { display: none; }
+  #m-play.on .i-pause { display: block; }
+
+  .sheet { display: block; position: fixed; inset: 0; z-index: 20; }
+  .sheet[hidden] { display: none !important; }
+  .sheet-backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.35); opacity: 0; transition: opacity 0.2s; }
+  .sheet-panel {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    max-height: 82dvh; overflow-y: auto; overscroll-behavior: contain;
+    background: var(--surface); color: var(--text);
+    border-radius: 18px 18px 0 0;
+    padding: 6px 16px calc(16px + var(--safe-b));
+    transform: translateY(100%); transition: transform 0.22s ease-out;
+    outline: none;
+  }
+  .sheet.open .sheet-backdrop { opacity: 1; }
+  .sheet.open .sheet-panel { transform: translateY(0); }
+  .sheet-handle { width: 100%; height: 26px; display: grid; place-items: center; touch-action: none; cursor: grab; }
+  .sheet-handle::before { content: ''; width: 40px; height: 5px; border-radius: 3px; background: var(--border); background: var(--muted); opacity: 0.5; }
+  .sheet-title { margin: 0 0 12px; font-size: 17px; font-weight: 600; text-align: center; }
+  .sheet-body { display: flex; flex-direction: column; gap: 16px; }
+  .sheet-body .head-actions { justify-content: flex-end; }
+  .sheet-body #taiji-controls { order: -1; } /* 太極頁：模式與緯度排最前 */
+
+  .ds-year { display: grid; grid-template-columns: 44px 44px 1fr 44px 44px; gap: 6px; margin-bottom: 12px; }
+  .ds-year input { font: inherit; font-size: 20px; text-align: center; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 10px; width: 100%; }
+  .ds-grid { display: flex; flex-direction: column; gap: 6px; }
+  .ds-row { display: grid; grid-template-columns: 52px 1fr 1fr; gap: 6px; align-items: center; }
+  .ds-m { font-size: 14px; color: var(--muted); }
+  .ds-term {
+    font: inherit; height: 46px; border-radius: 10px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text);
+    display: flex; align-items: center; justify-content: space-between; padding: 0 12px;
+    border-left: 4px solid var(--season);
+  }
+  .ds-term b { font-size: 17px; font-weight: 600; }
+  .ds-term small { font-size: 13px; color: var(--muted); }
+  .ds-term.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .ds-term.spring { --season: #7fae4a; } .ds-term.summer { --season: #e0643a; }
+  .ds-term.autumn { --season: #c98f2c; } .ds-term.winter { --season: #6f89a8; }
+  .ds-today { width: 100%; margin-top: 12px; }
+}
+
+/* 手機橫向（矮）：維持左右並排、靠上對齊（置中時面板比卡片高，卡片上方會空一塊） */
+@media (max-height: 600px) and (orientation: landscape) {
+  .app { padding: 8px; gap: 16px; align-items: flex-start; }
+  #card, #taiji { height: calc(100dvh - 16px); }
+  .panel { max-height: calc(100dvh - 16px); gap: 14px; }
+  .panel-head h1 { font-size: 28px; }
 }
