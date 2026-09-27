@@ -18,7 +18,9 @@ src_text = "".join(strip_comments(p.read_text(encoding="utf-8")) for p in files)
 names = re.findall(r"name: '(.{2})'", (ROOT / "src/data/terms.ts").read_text(encoding="utf-8"))
 assert len(names) == 24, names
 # 書法大字：節氣名 + 標題用字
-brush = set("".join(names) + "二十四節氣福")  # 福：大寒燈籠
+# 其他書法字：程式碼中標記 /*brush*/ '…' 的字串
+marked = "".join(re.findall(r"/\*brush\*/ '([^']+)'", "".join(p.read_text(encoding="utf-8") for p in files)))
+brush = set("".join(names) + "二十四節氣" + marked) - {"　"}
 # 內文：src 內所有非 ASCII 字元（CJK、標點、拼音）+ ASCII
 # 拼音以 toUpperCase() 顯示，帶聲調的大寫字母也要收
 body = {c for c in src_text + src_text.upper() if ord(c) > 0x7F} | {chr(c) for c in range(0x20, 0x7F)}

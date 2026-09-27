@@ -29,6 +29,7 @@
       <title id="card-title">二十四節氣</title>
     </svg>
     <canvas id="fx" aria-hidden="true"></canvas>
+    <svg id="taiji" viewBox="0 0 1080 1920" role="img" hidden></svg>
   </main>
   <aside class="panel">
     <header class="panel-head">
@@ -55,6 +56,26 @@
         <button id="play" class="btn" data-i18n="play">播放</button>
         <button id="next" class="btn" aria-label="Next term">›</button>
       </div>
+    </section>
+
+    <button id="view" class="btn view-toggle" data-i18n="viewTaiji">晝夜太極</button>
+
+    <section class="taiji-controls" id="taiji-controls" hidden>
+      <div class="seg" role="group">
+        <button id="mode-norm" class="seg-btn" data-i18n="modeNorm">正規化</button>
+        <button id="mode-raw" class="seg-btn" data-i18n="modeRaw">原始比例</button>
+      </div>
+      <label class="field"><span><span data-i18n="latitude">緯度</span> <output id="lat-out"></output></span>
+        <input id="lat" type="range" min="-89" max="89" step="0.1">
+      </label>
+      <div class="presets">
+        <button class="chip" data-lat="0" data-i18n="presetEquator">赤道</button>
+        <button class="chip" data-lat="25.03" data-i18n="presetTaipei">台北</button>
+        <button class="chip" data-lat="34.4" data-i18n="presetDengfeng">登封</button>
+        <button class="chip" data-lat="66.6" data-i18n="presetArctic">北極圈</button>
+        <button class="chip" id="preset-mine" data-i18n="presetMine">我的位置</button>
+      </div>
+      <p class="explain" id="explain"></p>
     </section>
 
     <section class="info" id="info"></section>

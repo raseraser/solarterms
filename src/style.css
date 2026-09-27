@@ -63,6 +63,16 @@ body {
   cursor: grab;
 }
 #card:active { cursor: grabbing; }
+#taiji {
+  display: block;
+  height: calc(100dvh - 48px);
+  max-height: 1100px;
+  aspect-ratio: 9 / 16;
+  width: auto;
+  border-radius: 14px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
+}
+[hidden] { display: none !important; }
 
 .panel {
   width: 340px;
@@ -131,6 +141,15 @@ body {
 .info dd { margin: 0; }
 .info a, .link, .panel-foot a { color: var(--accent); }
 
+.view-toggle { width: 100%; }
+.taiji-controls { display: flex; flex-direction: column; gap: 14px; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.seg-btn { font: inherit; font-size: 15px; height: 40px; border: 0; background: var(--btn); color: var(--text); cursor: pointer; }
+.seg-btn.on { background: var(--accent); color: #fff; }
+[data-theme='dark'] .seg-btn.on { color: #1a1611; }
+.field input[type='range'] { padding: 0; accent-color: var(--accent); }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.explain { margin: 0; font-size: 14px; line-height: 1.7; color: var(--muted); }
 .loc { font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
 .link { font: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
 .panel-foot { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
@@ -165,5 +184,6 @@ body {
   .stage { width: 100%; }
   #card { width: 100%; height: auto; max-height: none; border-radius: 0; box-shadow: none; }
   #fx { border-radius: 0; }
+  #taiji { width: 100%; height: auto; max-height: none; border-radius: 0; box-shadow: none; }
   .panel { width: 100%; padding: 0 16px; }
 }

@@ -6,6 +6,8 @@ import { TERMS } from './data/terms'
 import { detectLang, saveLang, t, type Lang } from './i18n'
 import { Particles } from './particles'
 import { inkSplatter, inkTransition } from './transition'
+import { TaijiView } from './taiji'
+import type { TaijiMode } from './taiji-geom'
 
 const TAIPEI = 25.03
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
@@ -15,14 +17,20 @@ const state = {
   lat: TAIPEI,
   locMine: false,
   locDenied: false,
+  latCustom: false,
   lang: detectLang() as Lang,
   playing: 0 as number, // setInterval id
+  view: 'cards' as 'cards' | 'taiji',
+  mode: 'norm' as TaijiMode,
 }
 
 const theme = () => (document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light')
 const svg = $<HTMLElement>('card') as unknown as SVGSVGElement
 const card = new CardView(svg)
 const fx = new Particles($<HTMLCanvasElement>('fx'), svg)
+const taijiSvg = $<HTMLElement>('taiji') as unknown as SVGSVGElement
+const taiji = new TaijiView(taijiSvg)
+taiji.onPick = (i) => { setView('cards'); go(split(state.abs).year * 24 + i) }
 
 // ── 控制項 ──
 const yearIn = $<HTMLInputElement>('year')
@@ -40,12 +48,19 @@ function renderStatic() {
   monthSel.replaceChildren(...Array.from({ length: 12 }, (_, k) => new Option(d.monthName(k + 1), String(k + 1))))
   $('lang').textContent = state.lang === 'zh' ? 'EN' : '中'
   $('play').textContent = state.playing ? d.pause : d.play
+  $('view').textContent = state.view === 'cards' ? d.viewTaiji : d.viewCards
+  $('explain').textContent = state.mode === 'norm' ? d.explainNorm : d.explainRaw
+  $('mode-norm').classList.toggle('on', state.mode === 'norm')
+  $('mode-raw').classList.toggle('on', state.mode === 'raw')
 }
 
-function render() {
+function render(animateTaiji = false) {
   const d = t(state.lang)
   const scene = card.render(state.abs, state.lat, theme(), d)
-  fx.set(scene.particles ?? [], card.ink)
+  fx.set(state.view === 'cards' ? scene.particles ?? [] : [], card.ink)
+  if (state.view === 'taiji') taiji.render({ lat: state.lat, mode: state.mode, active: split(state.abs).i, theme: theme(), d, animate: animateTaiji })
+  latIn.value = String(state.lat)
+  $('lat-out').textContent = `${Math.abs(state.lat).toFixed(1)}° ${state.lat >= 0 ? 'N' : 'S'}`
   const info = termInfo(state.abs, state.lat)
   const term = TERMS[info.i]
   yearIn.value = String(info.year)
@@ -67,9 +82,23 @@ function render() {
   const latStr = `${Math.abs(state.lat).toFixed(1)}°`
   $('loc-text').textContent =
     (state.lat >= 0 ? d.lat(latStr) : d.latSouth(latStr)) +
-    (state.locMine ? d.locMine : state.locDenied ? '' : d.locTaipei) +
+    (state.locMine ? d.locMine : state.locDenied || state.latCustom ? '' : d.locTaipei) +
     (state.locDenied ? ` · ${d.locDenied}` : '')
   $('locate').hidden = state.locMine
+}
+
+function setView(v: 'cards' | 'taiji') {
+  state.view = v
+  svg.toggleAttribute('hidden', v !== 'cards')
+  $('fx').hidden = v !== 'cards'
+  taijiSvg.toggleAttribute('hidden', v !== 'taiji')
+  $('taiji-controls').hidden = v !== 'taiji'
+  renderStatic()
+  render(v === 'taiji')
+  // 手機：面板在下方，切換後捲回圖面，否則使用者看不到剛打開的畫面
+  if (matchMedia('(max-width: 820px)').matches) {
+    document.querySelector('.stage')!.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+  }
 }
 
 function go(abs: number) {
@@ -81,6 +110,7 @@ function go(abs: number) {
 
 /** 換節氣：墨暈轉場 → 重繪 → 濺墨 */
 function changeTo(target: number) {
+  if (state.view === 'taiji') { state.abs = target; return render() }
   inkTransition(svg, card.ink)
   state.abs = target
   render()
@@ -171,11 +201,22 @@ $('lang').onclick = () => {
   render()
 }
 
+// ── 太極控制 ──
+const latIn = $<HTMLInputElement>('lat')
+$('view').onclick = () => setView(state.view === 'cards' ? 'taiji' : 'cards')
+$('mode-norm').onclick = () => { state.mode = 'norm'; renderStatic(); render(true) }
+$('mode-raw').onclick = () => { state.mode = 'raw'; renderStatic(); render(true) }
+latIn.oninput = () => { state.lat = Number(latIn.value); state.locMine = false; state.locDenied = false; state.latCustom = true; render() }
+document.querySelectorAll<HTMLButtonElement>('.presets [data-lat]').forEach((b) => {
+  b.onclick = () => { state.lat = Number(b.dataset.lat); state.locMine = false; state.latCustom = true; render(true) }
+})
+$('preset-mine').onclick = () => locate()
+
 // ── 定位：只取緯度，不上傳 ──
 function locate() {
   if (!('geolocation' in navigator)) return
   navigator.geolocation.getCurrentPosition(
-    (pos) => { state.lat = pos.coords.latitude; state.locMine = true; state.locDenied = false; render() },
+    (pos) => { state.lat = pos.coords.latitude; state.locMine = true; state.locDenied = false; state.latCustom = false; render() },
     () => { state.locDenied = true; render() },
     { maximumAge: 86400e3, timeout: 10000 },
   )
@@ -183,6 +224,6 @@ function locate() {
 $('locate').onclick = locate
 
 renderStatic()
-document.fonts.ready.then(render)
+document.fonts.ready.then(() => render())
 render()
 locate()

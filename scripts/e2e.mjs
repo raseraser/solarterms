@@ -79,6 +79,30 @@ for (const theme of ['light', 'dark']) {
   await p.context().close()
 }
 
+// ── 太極頁 ──
+{
+  const p = await open('light')
+  console.log('taiji')
+  await p.click('#view'); await p.waitForTimeout(300)
+  const vis = await p.evaluate(() => [document.getElementById('taiji').hasAttribute('hidden'), document.getElementById('card').hasAttribute('hidden'), document.getElementById('taiji-controls').hidden])
+  check(vis.join() === 'false,true,false', `切到太極：太極顯示、卡片隱藏、控制項顯示 ${vis}`)
+  const clip = () => p.$eval('#tj-reveal path', (e) => e.getAttribute('d'))
+  const early = await clip(); await p.waitForTimeout(3000); const late = await clip()
+  check(early.startsWith('M540 950') && late === 'M0 0 H1080 V1920 H0 Z', `逐步畫出：先是圓心扇形、結束時全開（${early.slice(0, 12)}… → ${late}）`)
+  const dayD = () => p.$eval('#taiji path[fill-rule]', (e) => e.getAttribute('d'))
+  const dNorm = await dayD()
+  await p.click('#mode-raw'); await p.waitForTimeout(200)
+  check((await dayD()) !== dNorm, '切換原始比例 → 太極形狀改變')
+  await p.$eval('#lat', (e) => { e.value = '66.6'; e.dispatchEvent(new Event('input')) }); await p.waitForTimeout(200)
+  check((await p.textContent('#taiji')).includes('66.6°'), '緯度滑桿 66.6 → 圖說更新')
+  await p.click('.presets [data-lat="25.03"]'); await p.waitForTimeout(200)
+  check((await p.textContent('#lat-out')).startsWith('25.0°'), '預設「台北」→ 緯度 25.0°')
+  await p.evaluate(() => [...document.querySelectorAll('.tj-term')].find((g) => g.textContent === '夏至').dispatchEvent(new MouseEvent('click', { bubbles: true })))
+  await p.waitForTimeout(600)
+  check((await title(p)).startsWith('夏至 2026') && !(await p.$eval('#card', (e) => e.hasAttribute('hidden'))), `點環上「夏至」→ 回卡片夏至: ${await title(p)}`)
+  await p.context().close()
+}
+
 // ── 墨暈轉場連續畫面 ──
 {
   const p = await open('light')
@@ -119,6 +143,10 @@ for (const theme of ['light', 'dark']) {
   const overflow = await p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)
   check(!overflow, '手機 390px 無橫向捲動')
   await p.screenshot({ path: `${out}/mobile.png`, fullPage: true })
+  await p.click('#view'); await p.waitForTimeout(900)
+  check(!(await p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)), '手機太極頁無橫向捲動')
+  check((await p.evaluate(() => document.getElementById('taiji').getBoundingClientRect().top)) > -5, '手機切到太極後捲回圖面頂端')
+  await p.screenshot({ path: `${out}/mobile-taiji.png` })
   await p.context().close()
 }
 

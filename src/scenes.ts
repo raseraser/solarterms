@@ -194,7 +194,7 @@ const SCENES: Record<string, Draw> = {
       h.append(el('rect', { x: x - 26 * s, y: len, width: 52 * s, height: 14 * s, fill: '#f6d27a' }))
       h.append(el('ellipse', { cx: x, cy: len + 85 * s, rx: 78 * s, ry: 72 * s, fill: '#e03a2f', stroke: '#f6d27a', 'stroke-width': 2 }))
       for (const k of [-0.5, 0, 0.5]) h.append(el('ellipse', { cx: x, cy: len + 85 * s, rx: 78 * s * Math.abs(k || 0.02) + 4, ry: 72 * s, fill: 'none', stroke: '#b3261e', 'stroke-width': 2 }))
-      h.append(el('text', { x, y: len + 85 * s, 'font-size': 52 * s, 'font-family': "'Masa Brush', serif", 'text-anchor': 'middle', 'dominant-baseline': 'central', fill: '#f6d27a' }, '福'))
+      h.append(el('text', { x, y: len + 85 * s, 'font-size': 52 * s, 'font-family': "'Masa Brush', serif", 'text-anchor': 'middle', 'dominant-baseline': 'central', fill: '#f6d27a' }, /*brush*/ '福'))
       h.append(el('rect', { x: x - 26 * s, y: len + 150 * s, width: 52 * s, height: 14 * s, fill: '#f6d27a' }))
       for (let k = -3; k <= 3; k++) h.append(el('line', { x1: x + k * 5, y1: len + 164 * s, x2: x + k * 6, y2: len + 230 * s, stroke: '#f6d27a', 'stroke-width': 2 }))
       g.append(h)
