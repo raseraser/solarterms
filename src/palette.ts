@@ -8,6 +8,8 @@ export interface Palette {
   accent: string
   /** 淡墨：次要文字、線條 */
   faint: string
+  /** 枝幹 / 莖（場景用） */
+  branch: string
 }
 
 // 淺色（宣紙）：[紙色, 山色, 字色]，依影片各節氣主色調
@@ -60,10 +62,10 @@ const PALE_GOLD = '#d8b66a'
 export function palette(i: number, theme: 'light' | 'dark'): Palette {
   const [paper, mountain, ink] = LIGHT[i]
   if (theme === 'light') {
-    return { paper, mountain, ink, accent: i === 1 ? '#f6d27a' : '#c0392b', faint: mix(ink, paper, 0.45) }
+    return { paper, mountain, ink, accent: i === 1 ? '#f6d27a' : '#c0392b', faint: mix(ink, paper, 0.45), branch: i === 1 ? '#5a1510' : '#3d2b1f' }
   }
   // 夜墨：深墨紙帶一點節氣色相，山為低明度季節色，字為月白，強調淡金
   const tint = i === 1 ? '#8e2119' : mountain
   const p = mix(NIGHT_INK, tint, 0.1)
-  return { paper: p, mountain: mix(NIGHT_INK, mountain, 0.38), ink: MOON_WHITE, accent: PALE_GOLD, faint: mix(MOON_WHITE, p, 0.5) }
+  return { paper: p, mountain: mix(NIGHT_INK, mountain, 0.38), ink: MOON_WHITE, accent: PALE_GOLD, faint: mix(MOON_WHITE, p, 0.5), branch: '#9c8b74' }
 }

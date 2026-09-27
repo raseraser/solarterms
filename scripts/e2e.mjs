@@ -67,7 +67,7 @@ for (const theme of ['light', 'dark']) {
   await p.selectOption('#month', '1'); await p.waitForTimeout(300)
   const shots = []
   for (let k = 0; k < 24; k++) {
-    await p.waitForTimeout(80)
+    await p.waitForTimeout(k === 0 ? 1500 : 1300) // 等墨暈轉場結束、粒子鋪開
     shots.push((await (await p.$('#card')).screenshot()).toString('base64'))
     await p.click('#next')
   }
@@ -77,6 +77,40 @@ for (const theme of ['light', 'dark']) {
   await sheet.screenshot({ path: `${out}/cards-${theme}.png`, fullPage: true })
   await sheet.close()
   await p.context().close()
+}
+
+// ── 墨暈轉場連續畫面 ──
+{
+  const p = await open('light')
+  await p.waitForTimeout(1500)
+  const frames = []
+  await p.click('#next')
+  for (const ms of [60, 200, 350, 500, 700, 1100]) {
+    await p.waitForTimeout(ms - (frames.length ? [60, 200, 350, 500, 700, 1100][frames.length - 1] : 0))
+    frames.push((await (await p.$('.stage')).screenshot()).toString('base64'))
+  }
+  check(await p.$('.ink-overlay') === null, '轉場結束後疊層已移除')
+  const sheet = await browser.newPage({ viewport: { width: 1800, height: 700 } })
+  await sheet.setContent(`<body style="margin:0;display:grid;grid-template-columns:repeat(6,1fr);gap:4px">${frames.map((b) => `<img style="width:100%" src="data:image/png;base64,${b}">`).join('')}</body>`)
+  await sheet.screenshot({ path: `${out}/transition.png`, fullPage: true })
+  await sheet.close()
+  await p.context().close()
+}
+
+// ── 減少動態效果 ──
+{
+  const ctx = await browser.newContext({ viewport: { width: 1400, height: 1000 }, reducedMotion: 'reduce' })
+  const p = await ctx.newPage()
+  p.on('pageerror', (e) => errors.push(e.message))
+  await p.goto(url, { waitUntil: 'networkidle' })
+  await p.click('#next')
+  await p.waitForTimeout(50)
+  check(await p.$('.ink-overlay') === null, 'reduced-motion：無轉場疊層')
+  check(await p.$eval('#fx', (c) => getComputedStyle(c).display) === 'none', 'reduced-motion：粒子層隱藏')
+  // 只算動畫（CSSAnimation / WAAPI）；按鈕 hover 的顏色 CSSTransition 不屬動態效果
+  const anims = await p.evaluate(() => document.getAnimations().filter((a) => a.playState === 'running' && a.constructor.name !== 'CSSTransition').length)
+  check(anims === 0, `reduced-motion：無執行中動畫（${anims}）`)
+  await ctx.close()
 }
 
 // ── 手機寬度 ──

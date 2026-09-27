@@ -2,16 +2,8 @@ import { TERMS } from './data/terms'
 import { displayNo, hm, split, termInfo, ABS_MAX, ABS_MIN } from './calendar'
 import { mix, palette, SEASON_COLOR, type Palette } from './palette'
 import type { Dict } from './i18n'
-
-const NS = 'http://www.w3.org/2000/svg'
-type Attrs = Record<string, string | number>
-
-export function el<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Attrs = {}, ...children: (Node | string)[]) {
-  const e = document.createElementNS(NS, tag)
-  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, String(v))
-  for (const c of children) e.append(c)
-  return e
-}
+import { drawScene, type SceneResult } from './scenes'
+import { el, rng, type Attrs } from './svg'
 
 const BRUSH = "'Masa Brush', 'Wenkai Body', serif"
 const BODY = "'Wenkai Body', 'Noto Serif TC', serif"
@@ -26,16 +18,23 @@ function vtext(s: string, x: number, y: number, size: number, attrs: Attrs = {},
   return g
 }
 
-/** 可重現的亂數（mulberry32） */
-export function rng(seed: number) {
-  let a = seed >>> 0
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0
-    let t = a
-    t = Math.imul(t ^ (t >>> 15), t | 1)
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+const MOUNTAIN_TOP = 1200
+
+/** 山峰積雪：脊線高於 threshold 的連續段落，往下加一條帶狀白帽（深度隨峰高變化） */
+function snowCapPaths(pts: [number, number][], threshold: number, depth: number, opacity: number) {
+  const out: SVGPathElement[] = []
+  let run: [number, number][] = []
+  const flush = () => {
+    if (run.length > 2) {
+      const top = run.map(([x, y]) => `${x} ${y.toFixed(1)}`).join(' L')
+      const bottom = [...run].reverse().map(([x, y]) => `${x} ${(y + Math.max(4, Math.min(depth, (threshold - y) * 0.9))).toFixed(1)}`).join(' L')
+      out.push(el('path', { d: `M${top} L${bottom} Z`, fill: '#ffffff', 'fill-opacity': opacity, filter: 'url(#soft)' }))
+    }
+    run = []
   }
+  for (const p of pts) (p[1] < threshold ? run.push(p) : flush())
+  flush()
+  return out
 }
 
 // ── 刻度尺幾何：大圓只露出頂端一段弧 ──
@@ -47,11 +46,16 @@ export class CardView {
   private dialLabels!: SVGGElement
   private dialArc!: SVGGElement
   private pal!: Palette
+  get ink() { return this.pal.ink }
+  get contentLayer() { return this.layers.content }
   private abs = 0
+  private sceneDefs!: SVGDefsElement
 
   constructor(svg: SVGSVGElement) {
     this.svg = svg
     svg.append(this.defs())
+    this.sceneDefs = el('defs')
+    svg.append(this.sceneDefs)
     this.layers = {
       bg: el('g'), mountains: el('g'), scene: el('g', { class: 'scene' }), content: el('g', { class: 'content' }), dial: el('g', { class: 'dial' }),
     }
@@ -74,7 +78,7 @@ export class CardView {
     )
   }
 
-  render(abs: number, lat: number, theme: 'light' | 'dark', d: Dict) {
+  render(abs: number, lat: number, theme: 'light' | 'dark', d: Dict): SceneResult {
     this.abs = abs
     const info = termInfo(abs, lat)
     const term = TERMS[info.i]
@@ -83,11 +87,15 @@ export class CardView {
     this.svg.querySelector('title')!.textContent = `${term.name} ${info.year}-${info.month}-${info.day}`
 
     this.renderBg(pal)
-    this.renderMountains(info.i, pal)
-    this.layers.scene.replaceChildren() // P2：節氣場景
-    this.renderContent(info, pal, d)
+    this.layers.scene.replaceChildren()
+    this.sceneDefs.replaceChildren()
+    const scene = drawScene(term.scene, this.layers.scene, pal, 500 + info.i * 31, this.sceneDefs)
+    if (scene.flash) this.layers.scene.append(el('rect', { class: 'flash', width: 1080, height: 1920, fill: '#ffffff' }))
+    this.renderMountains(info.i, pal, !!scene.snowCaps)
+    this.renderContent(info, pal, d, scene.moonFill)
     this.renderDialFrame(pal)
     this.setDialPos(abs)
+    return scene
   }
 
   private renderBg(pal: Palette) {
@@ -97,7 +105,7 @@ export class CardView {
     )
   }
 
-  private renderMountains(i: number, pal: Palette) {
+  private renderMountains(i: number, pal: Palette, snowCaps: boolean) {
     const g = this.layers.mountains
     g.replaceChildren()
     const rand = rng(1000 + i * 17)
@@ -107,29 +115,32 @@ export class CardView {
       const amp = 150 - k * 22
       const phases = [rand(), rand(), rand(), rand()].map((v) => v * Math.PI * 2)
       const freqs = [1.3 + rand(), 2.7 + rand() * 2, 5.5 + rand() * 3, 11 + rand() * 6]
-      let dPath = `M0 1920 L0 ${base}`
+      const hs: number[] = []
       for (let x = 0; x <= 1080; x += 10) {
         const u = x / 1080
         let h = 0
         freqs.forEach((f, j) => (h += Math.sin(u * f * Math.PI + phases[j]) / (j + 1) ** 1.2))
-        h = Math.max(0, h) ** 1.4 // 山峰尖、谷底平
-        dPath += ` L${x} ${(base - h * amp).toFixed(1)}`
+        hs.push(Math.max(0, h) ** 1.4) // 山峰尖、谷底平
       }
-      dPath += ' L1080 1920 Z'
+      // 峰頂不得高過拼音下緣（y = MOUNTAIN_TOP）：超過就整條等比壓低，不削平峰頂
+      const scale = Math.min(amp, (base - MOUNTAIN_TOP) / Math.max(...hs))
+      const pts: [number, number][] = hs.map((h, j) => [j * 10, base - h * scale])
+      const dPath = `M0 1920 L0 ${base} ` + pts.map(([x, y]) => `L${x} ${y.toFixed(1)}`).join(' ') + ' L1080 1920 Z'
       const id = `mg${k}`
       const color = pal.mountain
       g.append(
         el('linearGradient', { id, x1: 0, y1: 0, x2: 0, y2: 1 },
-          el('stop', { offset: 0, 'stop-color': color, 'stop-opacity': 0.35 + k * 0.17 }),
+          el('stop', { offset: 0, 'stop-color': color, 'stop-opacity': Math.min(1, (snowCaps ? 0.6 : 0.35) + k * 0.17) }),
           el('stop', { offset: 0.55, 'stop-color': color, 'stop-opacity': 0.12 + k * 0.1 }),
           el('stop', { offset: 1, 'stop-color': pal.paper, 'stop-opacity': 0 }),
         ),
         el('path', { d: dPath, fill: `url(#${id})` }),
       )
+      if (snowCaps && k < 3) g.append(...snowCapPaths(pts, base - amp * 0.35, 34 - k * 6, 0.9 - k * 0.2))
     }
   }
 
-  private renderContent(info: ReturnType<typeof termInfo>, pal: Palette, d: Dict) {
+  private renderContent(info: ReturnType<typeof termInfo>, pal: Palette, d: Dict, moonFill?: string) {
     const term = TERMS[info.i]
     const g = this.layers.content
     g.replaceChildren()
@@ -153,7 +164,7 @@ export class CardView {
     g.append(this.dayBar(info.day_h, pal, d))
 
     // 月輪 + 筆刷底 + 大字
-    g.append(el('circle', { cx: 540, cy: 720, r: 300, fill: pal.paper, 'fill-opacity': 0.55, stroke: pal.faint, 'stroke-width': 2, 'stroke-opacity': 0.6 }))
+    g.append(el('circle', { cx: 540, cy: 720, r: 300, fill: moonFill ?? pal.paper, 'fill-opacity': moonFill ? 0.9 : 0.55, stroke: pal.faint, 'stroke-width': 2, 'stroke-opacity': 0.6 }))
     g.append(el('rect', { x: 452, y: 420, width: 176, height: 600, rx: 18, fill: pal.mountain, 'fill-opacity': 0.6, filter: 'url(#rough)' }))
     g.append(vtext(term.name, 540, 575, 280, { 'font-family': BRUSH }, 1.02))
     // 季節印章

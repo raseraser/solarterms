@@ -4,6 +4,8 @@ import { ABS_MAX, ABS_MIN, clampAbs, currentAbs, daysToNext, hm, monthAbs, split
 import { YEAR_MAX, YEAR_MIN } from './astro'
 import { TERMS } from './data/terms'
 import { detectLang, saveLang, t, type Lang } from './i18n'
+import { Particles } from './particles'
+import { inkSplatter, inkTransition } from './transition'
 
 const TAIPEI = 25.03
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
@@ -18,7 +20,9 @@ const state = {
 }
 
 const theme = () => (document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light')
-const card = new CardView($<HTMLElement>('card') as unknown as SVGSVGElement)
+const svg = $<HTMLElement>('card') as unknown as SVGSVGElement
+const card = new CardView(svg)
+const fx = new Particles($<HTMLCanvasElement>('fx'), svg)
 
 // ── 控制項 ──
 const yearIn = $<HTMLInputElement>('year')
@@ -40,7 +44,8 @@ function renderStatic() {
 
 function render() {
   const d = t(state.lang)
-  card.render(state.abs, state.lat, theme(), d)
+  const scene = card.render(state.abs, state.lat, theme(), d)
+  fx.set(scene.particles ?? [], card.ink)
   const info = termInfo(state.abs, state.lat)
   const term = TERMS[info.i]
   yearIn.value = String(info.year)
@@ -71,8 +76,15 @@ function go(abs: number) {
   const target = clampAbs(abs)
   if (target === state.abs) return card.setDialPos(target)
   animateDial(state.abs, target)
+  changeTo(target)
+}
+
+/** 換節氣：墨暈轉場 → 重繪 → 濺墨 */
+function changeTo(target: number) {
+  inkTransition(svg, card.ink)
   state.abs = target
   render()
+  inkSplatter(card.contentLayer, card.ink)
 }
 
 // ── 刻度尺動畫 / 拖曳 ──
@@ -90,7 +102,6 @@ function animateDial(from: number, to: number) {
   anim = requestAnimationFrame(step)
 }
 
-const svg = $<HTMLElement>('card') as unknown as SVGSVGElement
 let drag: { x: number; p0: number; scale: number; moved: boolean } | null = null
 svg.addEventListener('pointerdown', (e) => {
   const rect = svg.getBoundingClientRect()
@@ -116,7 +127,7 @@ svg.addEventListener('pointerup', (e) => {
   if (moved) {
     const target = clampAbs(Math.round(p))
     animateDial(p, target)
-    if (target !== state.abs) { state.abs = target; render() }
+    if (target !== state.abs) changeTo(target)
   } else {
     // 點擊：點左半往前、右半往後
     const rect = svg.getBoundingClientRect()

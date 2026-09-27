@@ -48,7 +48,8 @@ body {
   gap: 32px;
   padding: 24px;
 }
-.stage { flex: 0 0 auto; }
+.stage { flex: 0 0 auto; position: relative; }
+#fx { position: absolute; left: 0; top: 0; pointer-events: none; border-radius: 14px; }
 #card {
   display: block;
   height: calc(100dvh - 48px);
@@ -134,10 +135,35 @@ body {
 .link { font: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
 .panel-foot { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
 
+/* ── 場景動畫（SVG） ── */
+#card .sway, .ink-overlay .sway { transform-box: fill-box; transform-origin: 50% 100%; animation: sway 4.5s ease-in-out infinite alternate; }
+#card .hang, .ink-overlay .hang { transform-box: fill-box; transform-origin: 50% 0; animation: sway 5s ease-in-out infinite alternate; }
+#card .spin { transform-origin: 540px 720px; animation: spin 60s linear infinite; }
+#card .spin-slow { transform-box: fill-box; transform-origin: center; animation: spin 30s linear infinite; }
+#card .glide { animation: glide 7s ease-in-out infinite alternate; }
+#card .flap { transform-box: fill-box; transform-origin: 50% 50%; animation: flap 0.5s ease-in-out infinite alternate; }
+#card .bob { animation: bob 3.5s ease-in-out infinite alternate; }
+#card .drift { animation: drift 26s ease-in-out infinite alternate; }
+#card .ripple { transform-box: fill-box; transform-origin: center; animation: ripple 3s ease-out infinite; }
+#card .flash { opacity: 0; animation: flash 7s linear infinite; }
+@keyframes sway { from { rotate: -2.2deg; } to { rotate: 2.6deg; } }
+@keyframes spin { to { rotate: 360deg; } }
+@keyframes glide { from { translate: -30px 10px; } to { translate: 40px -18px; } }
+@keyframes flap { from { scale: 1 1; } to { scale: 1 0.55; } }
+@keyframes bob { from { translate: 0 0; } to { translate: 18px -30px; } }
+@keyframes drift { from { translate: -40px 0; } to { translate: 60px 0; } }
+@keyframes ripple { from { scale: 0.2; opacity: 0.9; } to { scale: 1.6; opacity: 0; } }
+@keyframes flash { 0%, 90%, 93%, 100% { opacity: 0; } 91% { opacity: 0.35; } 92% { opacity: 0.05; } 92.5% { opacity: 0.25; } }
+@media (prefers-reduced-motion: reduce) {
+  #card * { animation: none !important; }
+  #fx { display: none; }
+}
+
 /* 手機：卡片滿寬，面板在下 */
 @media (max-width: 820px) {
   .app { flex-direction: column; padding: 0 0 24px; gap: 16px; }
   .stage { width: 100%; }
   #card { width: 100%; height: auto; max-height: none; border-radius: 0; box-shadow: none; }
+  #fx { border-radius: 0; }
   .panel { width: 100%; padding: 0 16px; }
 }
